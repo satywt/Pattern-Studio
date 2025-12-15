@@ -27,7 +27,7 @@ const AssetUploader: React.FC<Props> = ({ assets, onUpload, onRemove }) => {
         <div className="w-10 h-10 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mb-2 group-hover:bg-blue-100 group-hover:text-blue-500 transition-colors">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
         </div>
-        <span className="text-sm font-semibold text-slate-600">上传图标</span>
+        <span className="text-sm font-semibold text-slate-600">上传图形元素</span>
         <span className="text-xs text-slate-400 mt-1">支持 SVG (推荐), PNG, JPG</span>
       </div>
       <input 
