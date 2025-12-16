@@ -171,9 +171,19 @@ export class PatternEngine {
         h = sizeOrW / asset.aspectRatio;
     }
 
-    const angle = actualConfig.rotationRandomness 
-        ? Math.random() * Math.PI * 2 
-        : (Math.floor(Math.random() * 4) * 90) * (Math.PI / 180);
+    let angle = 0;
+
+    if (actualConfig.rotationRandomness) {
+        if (actualConfig.mode === 'grid') {
+            // Strict orthogonal rotation for grid: 0, 90, 180, 270
+            angle = (Math.floor(Math.random() * 4) * 90) * (Math.PI / 180);
+        } else {
+            // Free rotation for random mode
+            angle = Math.random() * Math.PI * 2;
+        }
+    } else {
+        angle = 0;
+    }
 
     const color = (actualConfig.useRandomColor && actualConfig.colors.length > 0)
         ? actualConfig.colors[Math.floor(Math.random() * actualConfig.colors.length)]
@@ -183,9 +193,6 @@ export class PatternEngine {
     let cachedCanvas = null;
     if (color) {
         // We use a reasonably sized canvas for the cache to balance memory vs quality
-        // In a real app, you might cache one master tinted image per color per asset, 
-        // but here we cache per item for simplicity given sizing differences.
-        // Better optimization: Cache (AssetID + Color) -> Canvas
         cachedCanvas = this.createTintedCanvas(asset, color, w, h);
     }
 
@@ -279,9 +286,6 @@ export class PatternEngine {
                     </svg>
                 </g>`;
           } else {
-              // For raster images in SVG, we would need Base64 data. 
-              // For now, let's assume standard behavior or placeholder.
-              // In a real app, we'd convert the img src to base64 if it isn't already.
               content += `
                 <g transform="translate(${item.x}, ${item.y}) rotate(${deg})">
                     <image href="${asset.img.src}" x="${-item.w/2}" y="${-item.h/2}" width="${item.w}" height="${item.h}" />

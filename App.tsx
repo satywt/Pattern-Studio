@@ -72,6 +72,15 @@ function App() {
     engine.setAssets(assets);
   }, [assets, engine]);
 
+  // --- Real-time Generation ---
+  // Trigger generation whenever config changes
+  useEffect(() => {
+    if (assets.length > 0) {
+        generatePattern();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config]); 
+
   // --- Animation Loop ---
   useEffect(() => {
     const loop = (time: number) => {
@@ -116,7 +125,8 @@ function App() {
                  processedCount++;
                  if (processedCount === files.length) {
                      setAssets(prev => [...prev, ...newAssets]);
-                     // Auto generate if it's the first upload
+                     // Auto generate is now handled by the config/asset useEffects, 
+                     // but explicit call ensures first render if config hasn't changed
                      if (assets.length === 0) setTimeout(generatePattern, 100);
                  }
             };
@@ -161,7 +171,7 @@ function App() {
           img.onload = () => {
               engine.setMask(img);
               setConfig(prev => ({ ...prev, useMask: true }));
-              setTimeout(generatePattern, 100);
+              // generatePattern will be triggered by config change
           };
           img.src = ev.target?.result as string;
       };
@@ -234,11 +244,11 @@ function App() {
       <aside 
         className={`
             fixed top-0 left-0 h-full bg-white/95 backdrop-blur-xl border-r border-slate-200 shadow-2xl z-50
-            transition-all duration-300 ease-in-out w-80 overflow-y-auto
+            transition-all duration-300 ease-in-out w-80 flex flex-col
             ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
-        <div className="p-5 pb-20 space-y-8">
+        <div className="flex-1 overflow-y-auto p-5 space-y-8 scrollbar-hide">
             <header className="flex justify-between items-center">
                 <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Pattern Studio</h1>
                 <button onClick={() => setSidebarOpen(false)} className="text-slate-400 hover:text-slate-600">
@@ -263,7 +273,6 @@ function App() {
                             key={m}
                             onClick={() => {
                                 setConfig(prev => ({...prev, mode: m as any}));
-                                setTimeout(generatePattern, 50);
                             }}
                             className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${config.mode === m ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
                         >
@@ -274,30 +283,53 @@ function App() {
 
                 {/* Common Sliders */}
                 <div className="space-y-4">
-                    <div className="space-y-1">
-                        <div className="flex justify-between text-xs"><span>最小尺寸</span><span>{config.minSize}px</span></div>
-                        <input type="range" min="10" max="200" value={config.minSize} onChange={e => setConfig({...config, minSize: Number(e.target.value)})} className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"/>
-                    </div>
-                    <div className="space-y-1">
-                        <div className="flex justify-between text-xs"><span>最大尺寸</span><span>{config.maxSize}px</span></div>
-                        <input type="range" min="10" max="400" value={config.maxSize} onChange={e => setConfig({...config, maxSize: Number(e.target.value)})} className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"/>
-                    </div>
-                    
                     {config.mode === 'random' ? (
-                         <div className="space-y-1">
-                            <div className="flex justify-between text-xs"><span>分布密度</span><span>{config.density}</span></div>
-                            <input type="range" min="10" max="400" value={config.density} onChange={e => setConfig({...config, density: Number(e.target.value)})} className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"/>
-                            <label className="flex items-center gap-2 mt-2 cursor-pointer">
-                                <input type="checkbox" checked={config.preventOverlap} onChange={e => setConfig({...config, preventOverlap: e.target.checked})} className="rounded text-blue-600 focus:ring-blue-500" />
-                                <span className="text-sm text-slate-600">防止重叠</span>
-                            </label>
-                        </div>
+                        <>
+                            <div className="space-y-1">
+                                <div className="flex justify-between text-xs"><span>最小尺寸</span><span>{config.minSize}px</span></div>
+                                <input type="range" min="10" max="200" value={config.minSize} onChange={e => setConfig({...config, minSize: Number(e.target.value)})} className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"/>
+                            </div>
+                            <div className="space-y-1">
+                                <div className="flex justify-between text-xs"><span>最大尺寸</span><span>{config.maxSize}px</span></div>
+                                <input type="range" min="10" max="400" value={config.maxSize} onChange={e => setConfig({...config, maxSize: Number(e.target.value)})} className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"/>
+                            </div>
+                            <div className="space-y-1">
+                                <div className="flex justify-between text-xs"><span>分布密度</span><span>{config.density}</span></div>
+                                <input type="range" min="10" max="400" value={config.density} onChange={e => setConfig({...config, density: Number(e.target.value)})} className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"/>
+                                <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                                    <input type="checkbox" checked={config.preventOverlap} onChange={e => setConfig({...config, preventOverlap: e.target.checked})} className="rounded text-blue-600 focus:ring-blue-500" />
+                                    <span className="text-sm text-slate-600">防止重叠</span>
+                                </label>
+                            </div>
+                        </>
                     ) : (
-                        <div className="space-y-1">
-                            <div className="flex justify-between text-xs"><span>网格间距</span><span>{config.gridGap}px</span></div>
-                            <input type="range" min="-20" max="100" value={config.gridGap} onChange={e => setConfig({...config, gridGap: Number(e.target.value)})} className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"/>
-                        </div>
+                        <>
+                            {/* Grid Mode Controls */}
+                            <div className="space-y-1">
+                                <div className="flex justify-between text-xs"><span>图标尺寸</span><span>{config.maxSize}px</span></div>
+                                <input type="range" min="10" max="400" value={config.maxSize} onChange={e => setConfig({...config, maxSize: Number(e.target.value)})} className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"/>
+                            </div>
+                            <div className="space-y-1">
+                                <div className="flex justify-between text-xs"><span>网格间距</span><span>{config.gridGap}px</span></div>
+                                <input type="range" min="-20" max="100" value={config.gridGap} onChange={e => setConfig({...config, gridGap: Number(e.target.value)})} className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"/>
+                            </div>
+                        </>
                     )}
+
+                    {/* Rotation Control */}
+                    <div className="space-y-1 pt-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                checked={config.rotationRandomness} 
+                                onChange={e => setConfig({...config, rotationRandomness: e.target.checked})} 
+                                className="rounded text-blue-600 focus:ring-blue-500" 
+                            />
+                            <span className="text-sm text-slate-600">
+                                {config.mode === 'grid' ? '旋转图标 (90°)' : '随机旋转角度'}
+                            </span>
+                        </label>
+                    </div>
                 </div>
             </section>
 
@@ -356,7 +388,7 @@ function App() {
         </div>
         
         {/* Sticky Footer Actions */}
-        <div className="absolute bottom-0 left-0 w-full bg-white border-t border-slate-200 p-4 space-y-2">
+        <div className="p-4 bg-white border-t border-slate-200 z-10 shrink-0">
             <button 
                 onClick={generatePattern}
                 className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg shadow-lg active:transform active:scale-95 transition-all flex items-center justify-center gap-2"
