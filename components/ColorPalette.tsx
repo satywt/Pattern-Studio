@@ -48,9 +48,13 @@ const ColorPalette: React.FC<Props> = ({ colors, onChange, useRandomColor, onTog
             </div>
           </div>
         ))}
-        <label className="w-8 h-8 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center cursor-pointer hover:border-blue-500 hover:text-blue-500 text-slate-400 transition-colors">
+        <label className="w-8 h-8 relative rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center cursor-pointer hover:border-blue-500 hover:text-blue-500 text-slate-400 transition-colors">
           <span className="text-lg leading-none">+</span>
-          <input type="color" className="opacity-0 absolute w-0 h-0" onChange={addColor} />
+          <input 
+            type="color" 
+            className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10" 
+            onChange={addColor} 
+          />
         </label>
       </div>
     </div>
