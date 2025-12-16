@@ -192,7 +192,6 @@ export class PatternEngine {
     // Optimization: Cache the tinted canvas if we have a color
     let cachedCanvas = null;
     if (color) {
-        // We use a reasonably sized canvas for the cache to balance memory vs quality
         cachedCanvas = this.createTintedCanvas(asset, color, w, h);
     }
 
@@ -269,6 +268,7 @@ export class PatternEngine {
   }
 
   public exportSVG(items: LayoutItem[]): string {
+      const parser = new DOMParser();
       let content = `<svg width="${this.width}" height="${this.height}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">`;
       
       items.forEach(item => {
@@ -276,19 +276,92 @@ export class PatternEngine {
           if (!asset) return;
 
           const deg = item.angle * (180 / Math.PI);
-          const colorAttr = item.color ? `fill="${item.color}"` : '';
           
           if (asset.type === 'svg' && asset.vectorContent) {
+               // Vector handling
+               let innerContent = asset.vectorContent;
+               let gAttrs = `transform="translate(${item.x}, ${item.y}) rotate(${deg})"`;
+               
+               if (item.color) {
+                   try {
+                       // Wrap in dummy svg for parsing
+                       const doc = parser.parseFromString(`<svg>${innerContent}</svg>`, "image/svg+xml");
+                       const root = doc.documentElement;
+                       
+                       // 1. Process <style> tags content
+                       const styleTags = root.getElementsByTagName('style');
+                       for (let i = 0; i < styleTags.length; i++) {
+                           const style = styleTags[i];
+                           if (style.textContent) {
+                               let css = style.textContent;
+                               // Replace fill colors (excluding none)
+                               css = css.replace(/fill\s*:\s*(?!none\b)[^;}\n]+/gi, 'fill: currentColor');
+                               // Replace stroke colors (excluding none)
+                               css = css.replace(/stroke\s*:\s*(?!none\b)[^;}\n]+/gi, 'stroke: currentColor');
+                               style.textContent = css;
+                           }
+                       }
+                       
+                       // 2. Process Elements
+                       const walker = doc.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+                       let currentNode = walker.nextNode(); // skip root
+                       
+                       while(currentNode) {
+                           const el = currentNode as Element;
+                           
+                           // Handle Fill Attribute
+                           const fill = el.getAttribute('fill');
+                           if (fill && fill.toLowerCase() !== 'none') {
+                               el.setAttribute('fill', 'currentColor');
+                           }
+                           
+                           // Handle Stroke Attribute
+                           const stroke = el.getAttribute('stroke');
+                           if (stroke && stroke.toLowerCase() !== 'none') {
+                               el.setAttribute('stroke', 'currentColor');
+                           }
+                           
+                           // Handle Style Attribute
+                           const style = el.getAttribute('style');
+                           if (style) {
+                               let newStyle = style;
+                               // Replace fill: val (but not none)
+                               newStyle = newStyle.replace(/fill\s*:\s*(?!none\b)[^;"]+/gi, 'fill: currentColor');
+                               // Replace stroke: val (but not none)
+                               newStyle = newStyle.replace(/stroke\s*:\s*(?!none\b)[^;"]+/gi, 'stroke: currentColor');
+                               if (newStyle !== style) el.setAttribute('style', newStyle);
+                           }
+                           
+                           currentNode = walker.nextNode();
+                       }
+                       
+                       innerContent = root.innerHTML;
+                       gAttrs += ` fill="${item.color}" color="${item.color}"`;
+                   } catch (e) {
+                       console.warn("Failed to parse/colorize SVG content", e);
+                       // Fallback
+                       gAttrs += ` fill="${item.color}"`; 
+                   }
+               }
+
                content += `
-                <g transform="translate(${item.x}, ${item.y}) rotate(${deg})">
-                    <svg x="${-item.w/2}" y="${-item.h/2}" width="${item.w}" height="${item.h}" viewBox="${asset.viewBox}" ${colorAttr} style="overflow: visible;">
-                        ${asset.vectorContent}
+                <g ${gAttrs}>
+                    <svg x="${-item.w/2}" y="${-item.h/2}" width="${item.w}" height="${item.h}" viewBox="${asset.viewBox}" style="overflow: visible;">
+                        ${innerContent}
                     </svg>
                 </g>`;
           } else {
+              // Raster handling
+              let href = asset.img.src;
+              
+              // If colored, we MUST use the cachedCanvas (which is the tinted version)
+              if (item.color && item.cachedCanvas) {
+                  href = item.cachedCanvas.toDataURL('image/png');
+              }
+
               content += `
                 <g transform="translate(${item.x}, ${item.y}) rotate(${deg})">
-                    <image href="${asset.img.src}" x="${-item.w/2}" y="${-item.h/2}" width="${item.w}" height="${item.h}" />
+                    <image href="${href}" x="${-item.w/2}" y="${-item.h/2}" width="${item.w}" height="${item.h}" />
                 </g>`;
           }
       });

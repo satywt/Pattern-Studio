@@ -258,7 +258,7 @@ function App() {
 
             {/* Asset Section */}
             <section>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">图标素材</h3>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">图形元素</h3>
                 <AssetUploader assets={assets} onUpload={handleAssetUpload} onRemove={removeAsset} />
             </section>
 
